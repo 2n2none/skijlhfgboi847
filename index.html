@@ -95,6 +95,21 @@
     var zoom = document.getElementById('zoom').value;
     var mpx = document.getElementById('mpx').value;
     var suggestedPrice = document.getElementById('suggested-price').value;
+
+    console.log('Adding product:', {
+      brand: brand,
+      model: model,
+      quantity: parseInt(quantity),
+      purchasePrice: purchasePrice,
+      purchaseDate: purchaseDate,
+      releaseYear: parseInt(releaseYear),
+      cameraType: cameraType,
+      battery: battery,
+      nightVision: nightVision,
+      zoom: zoom,
+      mpx: mpx,
+      suggestedPrice: parseFloat(suggestedPrice)
+    });
     
     db.collection('products').add({
       brand: brand,
@@ -164,6 +179,7 @@
     productList.innerHTML = '';
     querySnapshot.forEach(function (doc) {
       var data = doc.data();
+      console.log('Listing product:', data);
       var li = document.createElement('li');
       li.className = 'product-item';
       li.textContent = `${data.brand} ${data.model}: ${data.quantity} pcs, $${data.purchasePrice}, Purchased on ${data.purchaseDate}, Released in ${data.releaseYear}, Camera Types: ${data.cameraType.join(', ')}, Battery: ${data.battery}, Night Vision: ${data.nightVision ? 'Yes' : 'No'}, Zoom: ${data.zoom}, ${data.mpx} MP, Suggested Price: $${data.suggestedPrice}`;
@@ -198,6 +214,21 @@
     var zoom = document.getElementById('zoom').value;
     var mpx = document.getElementById('mpx').value;
     var suggestedPrice = document.getElementById('suggested-price').value;
+
+    console.log('Adding product:', {
+      brand: brand,
+      model: model,
+      quantity: parseInt(quantity),
+      purchasePrice: purchasePrice,
+      purchaseDate: purchaseDate,
+      releaseYear: parseInt(releaseYear),
+      cameraType: cameraType,
+      battery: battery,
+      nightVision: nightVision,
+      zoom: zoom,
+      mpx: mpx,
+      suggestedPrice: parseFloat(suggestedPrice)
+    });
     
     db.collection('products').add({
       brand: brand,
