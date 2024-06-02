@@ -20,6 +20,9 @@
     .product-item {
       margin-bottom: 10px;
     }
+    .product-item button {
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
@@ -27,8 +30,36 @@
 <h1>Product Manager</h1>
 
 <form id="product-form">
-  <input type="text" id="product-name" placeholder="Product Name" required>
-  <input type="number" id="product-price" placeholder="Product Price" required>
+  <input type="text" id="brand" placeholder="Brand" required>
+  <input type="text" id="model" placeholder="Model" required>
+  <input type="number" id="quantity" placeholder="Quantity" min="1" required>
+  <input type="text" id="purchase-price" placeholder="Purchase Price" required>
+  <input type="date" id="purchase-date" required>
+  <input type="number" id="release-year" placeholder="Release Year" required>
+  <select id="camera-type" multiple required>
+    <option value="VHS">VHS</option>
+    <option value="VHS-C">VHS-C</option>
+    <option value="Betamax">Betamax</option>
+    <option value="Video8">Video8</option>
+    <option value="Hi8">Hi8</option>
+    <option value="Digital8">Digital8</option>
+    <option value="MiniDV">MiniDV</option>
+    <option value="DVCAM">DVCAM</option>
+    <option value="DVCPRO">DVCPRO</option>
+    <option value="Betacam">Betacam</option>
+    <option value="Betacam SP">Betacam SP</option>
+    <option value="Betacam SX">Betacam SX</option>
+    <option value="Digital Betacam (DigiBeta)">Digital Betacam (DigiBeta)</option>
+    <option value="HDCAM">HDCAM</option>
+    <option value="Karty pamięci (SD, microSD itd.)">Karty pamięci (SD, microSD itd.)</option>
+  </select>
+  <input type="text" id="battery" placeholder="Battery" required>
+  <label>Night Vision:
+    <input type="checkbox" id="night-vision">
+  </label>
+  <input type="text" id="zoom" placeholder="Zoom" required>
+  <input type="text" id="mpx" placeholder="Mpx" required>
+  <input type="number" id="suggested-price" placeholder="Suggested Price" required>
   <button type="submit">Add Product</button>
 </form>
 
@@ -37,14 +68,14 @@
 <script>
   // Firebase configuration
   var firebaseConfig = {
-    apiKey: "AIzaSyA6QtzqIVBFGuBo19dVmoqwXH5ohHubpeI",
+	apiKey: "AIzaSyA6QtzqIVBFGuBo19dVmoqwXH5ohHubpeI",
     authDomain: "baza-40253.firebaseapp.com",
     projectId: "baza-40253",
     storageBucket: "baza-40253.appspot.com",
     messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
     appId: "1:723026251888:web:cb6f0d323e7c231ba124b5"
   };
-  
+
   // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
@@ -52,26 +83,142 @@
   // Add product
   document.getElementById('product-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    var name = document.getElementById('product-name').value;
-    var price = document.getElementById('product-price').value;
+    var brand = document.getElementById('brand').value;
+    var model = document.getElementById('model').value;
+    var quantity = document.getElementById('quantity').value;
+    var purchasePrice = document.getElementById('purchase-price').value;
+    var purchaseDate = document.getElementById('purchase-date').value;
+    var releaseYear = document.getElementById('release-year').value;
+    var cameraType = Array.from(document.getElementById('camera-type').selectedOptions).map(option => option.value);
+    var battery = document.getElementById('battery').value;
+    var nightVision = document.getElementById('night-vision').checked;
+    var zoom = document.getElementById('zoom').value;
+    var mpx = document.getElementById('mpx').value;
+    var suggestedPrice = document.getElementById('suggested-price').value;
+    
     db.collection('products').add({
-      name: name,
-      price: parseFloat(price)
+      brand: brand,
+      model: model,
+      quantity: parseInt(quantity),
+      purchasePrice: purchasePrice,
+      purchaseDate: purchaseDate,
+      releaseYear: parseInt(releaseYear),
+      cameraType: cameraType,
+      battery: battery,
+      nightVision: nightVision,
+      zoom: zoom,
+      mpx: mpx,
+      suggestedPrice: parseFloat(suggestedPrice)
     });
+
     document.getElementById('product-form').reset();
   });
+
+  // Edit product
+  function editProduct(id, data) {
+    document.getElementById('brand').value = data.brand;
+    document.getElementById('model').value = data.model;
+    document.getElementById('quantity').value = data.quantity;
+    document.getElementById('purchase-price').value = data.purchasePrice;
+    document.getElementById('purchase-date').value = data.purchaseDate;
+    document.getElementById('release-year').value = data.releaseYear;
+    Array.from(document.getElementById('camera-type').options).forEach(option => {
+      option.selected = data.cameraType.includes(option.value);
+    });
+    document.getElementById('battery').value = data.battery;
+    document.getElementById('night-vision').checked = data.nightVision;
+    document.getElementById('zoom').value = data.zoom;
+    document.getElementById('mpx').value = data.mpx;
+    document.getElementById('suggested-price').value = data.suggestedPrice;
+    document.getElementById('product-form').removeEventListener('submit', addProduct);
+    document.getElementById('product-form').addEventListener('submit', function updateProduct(e) {
+      e.preventDefault();
+      db.collection('products').doc(id).update({
+        brand: document.getElementById('brand').value,
+        model: document.getElementById('model').value,
+        quantity: parseInt(document.getElementById('quantity').value),
+        purchasePrice: document.getElementById('purchase-price').value,
+        purchaseDate: document.getElementById('purchase-date').value,
+        releaseYear: parseInt(document.getElementById('release-year').value),
+        cameraType: Array.from(document.getElementById('camera-type').selectedOptions).map(option => option.value),
+        battery: document.getElementById('battery').value,
+        nightVision: document.getElementById('night-vision').checked,
+        zoom: document.getElementById('zoom').value,
+        mpx: document.getElementById('mpx').value,
+        suggestedPrice: parseFloat(document.getElementById('suggested-price').value)
+      });
+      document.getElementById('product-form').reset();
+      document.getElementById('product-form').removeEventListener('submit', updateProduct);
+      document.getElementById('product-form').addEventListener('submit', addProduct);
+    });
+  }
+
+  // Delete product
+  function deleteProduct(id) {
+    db.collection('products').doc(id).delete();
+  }
 
   // List products
   db.collection('products').onSnapshot(function (querySnapshot) {
     var productList = document.getElementById('product-list');
     productList.innerHTML = '';
     querySnapshot.forEach(function (doc) {
+      var data = doc.data();
       var li = document.createElement('li');
       li.className = 'product-item';
-      li.textContent = doc.data().name + ': $' + doc.data().price;
+      li.textContent = `${data.brand} ${data.model}: ${data.quantity} pcs, $${data.purchasePrice}, Purchased on ${data.purchaseDate}, Released in ${data.releaseYear}, Camera Types: ${data.cameraType.join(', ')}, Battery: ${data.battery}, Night Vision: ${data.nightVision ? 'Yes' : 'No'}, Zoom: ${data.zoom}, ${data.mpx} MP, Suggested Price: $${data.suggestedPrice}`;
+      var editButton = document.createElement('button');
+      editButton.textContent = 'Edit';
+      editButton.onclick = function() {
+        editProduct(doc.id, data);
+      };
+      var deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.onclick = function() {
+        deleteProduct(doc.id);
+      };
+      li.appendChild(editButton);
+      li.appendChild(deleteButton);
       productList.appendChild(li);
     });
   });
+
+  // Add product function for event listener
+  function addProduct(e) {
+    e.preventDefault();
+    var brand = document.getElementById('brand').value;
+    var model = document.getElementById('model').value;
+    var quantity = document.getElementById('quantity').value;
+    var purchasePrice = document.getElementById('purchase-price').value;
+    var purchaseDate = document.getElementById('purchase-date').value;
+    var releaseYear = document.getElementById('release-year').value;
+    var cameraType = Array.from(document.getElementById('camera-type').selectedOptions).map(option => option.value);
+    var battery = document.getElementById('battery').value;
+    var nightVision = document.getElementById('night-vision').checked;
+    var zoom = document.getElementById('zoom').value;
+    var mpx = document.getElementById('mpx').value;
+    var suggestedPrice = document.getElementById('suggested-price').value;
+    
+    db.collection('products').add({
+      brand: brand,
+      model: model,
+      quantity: parseInt(quantity),
+      purchasePrice: purchasePrice,
+      purchaseDate: purchaseDate,
+      releaseYear: parseInt(releaseYear),
+      cameraType: cameraType,
+      battery: battery,
+      nightVision: nightVision,
+      zoom: zoom,
+      mpx: mpx,
+      suggestedPrice: parseFloat(suggestedPrice)
+    });
+
+    document.getElementById('product-form').reset();
+  }
+
+  // Initial form submit event listener
+  document.getElementById('product-form').addEventListener('submit', addProduct);
 </script>
 
 </body>
