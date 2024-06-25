@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Product Manager</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .form-group select, .form-group input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th.sortable {
+      cursor: pointer;
+    }
+    .hidden {
+      display: none;
+    }
+    .actions {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .actions button {
+      margin-right: 10px;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h1>Product Manager</h1>
+  <div class="actions">
+    <input type="text" id="search-bar" placeholder="Search products">
+    <div>
+      <button onclick="showList()">List</button>
+      <button onclick="showArchive()">Archive</button>
+      <button onclick="showTrash()">Trash</button>
+    </div>
+  </div>
+
+  <form id="product-form">
+    <div class="form-group">
+      <label for="brand">Brand</label>
+      <select id="brand" required>
+        <option value="Canon">Canon</option>
+        <option value="Casio">Casio</option>
+        <option value="Fujifilm">Fujifilm</option>
+        <option value="JVC">JVC</option>
+        <option value="Kodak">Kodak</option>
+        <option value="Olympus">Olympus</option>
+        <option value="Panasonic">Panasonic</option>
+        <option value="Pentax">Pentax</option>
+        <option value="Practica">Practica</option>
+        <option value="Samsung">Samsung</option>
+        <option value="Sony">Sony</option>
+        <option value="Sharp">Sharp</option>
+        <option value="Inna">Inna</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="model">Model</label>
+      <input type="text" id="model" placeholder="Model" required>
+    </div>
+    <div class="form-group">
+      <label for="quantity">Quantity</label>
+      <input type="number" id="quantity" placeholder="Quantity" min="1" required>
+    </div>
+    <div class="form-group">
+      <label for="purchase-price">Purchase Price (PLN)</label>
+      <input type="text" id="purchase-price" placeholder="Purchase Price" required>
+    </div>
+    <div class="form-group">
+      <label for="purchase-date">Purchase Date</label>
+      <input type="date" id="purchase-date" required>
+    </div>
+    <div class="form-group">
+      <label for="release-year">Release Year</label>
+      <input type="number" id="release-year" placeholder="Release Year" required>
+    </div>
+    <div class="form-group">
+      <label for="camera-type">Camera Type</label>
+      <select id="camera-type" multiple required>
+        <option value="VHS">VHS</option>
+        <option value="VHS-C">VHS-C</option>
+        <option value="Betamax">Betamax</option>
+        <option value="Video8">Video8</option>
+        <option value="Hi8">Hi8</option>
+        <option value="Digital8">Digital8</option>
+        <option value="MiniDV">MiniDV</option>
+        <option value="DVCAM">DVCAM</option>
+        <option value="DVCPRO">DVCPRO</option>
+        <option value="Betacam">Betacam</option>
+        <option value="Betacam SP">Betacam SP</option>
+        <option value="Betacam SX">Betacam SX</option>
+        <option value="Digital Betacam (DigiBeta)">Digital Betacam (DigiBeta)</option>
+        <option value="HDCAM">HDCAM</option>
+        <option value="Karty pamięci (SD, microSD itd.)">Karty pamięci (SD, microSD itd.)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="battery">Battery</label>
+      <select id="battery" required>
+        <!-- Options will be dynamically populated based on brand selection -->
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="night-vision">Night Vision</label>
+      <select id="night-vision" required>
+        <option value="none">None</option>
+        <option value="NightShot">NightShot</option>
+        <option value="Super NightShot">Super NightShot</option>
+        <option value="Other NV">Other NV</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="zoom">Zoom</label>
+      <input type="text" id="zoom" placeholder="Zoom" required>
+    </div>
+    <div class="form-group">
+      <label for="mpx">Mpx</label>
+      <input type="text" id="mpx" placeholder="Mpx" required>
+    </div>
+    <div class="form-group">
+      <label for="suggested-price">Suggested Price (PLN)</label>
+      <input type="number" id="suggested-price" placeholder="Suggested Price" required>
+    </div>
+    <button type="submit" id="submit-button">Add Product</button>
+    <button type="button" id="save-changes-button" class="hidden">Save Changes</button>
+  </form>
+
+  <table id="product-table">
+    <thead>
+      <tr>
+        <th class="sortable" onclick="sortTable(0)">Brand</th>
+        <th class="sortable" onclick="sortTable(1)">Model</th>
+        <th class="sortable" onclick="sortTable(2)">Quantity</th>
+        <th class="sortable" onclick="sortTable(3)">Purchase Price (PLN)</th>
+        <th class="sortable" onclick="sortTable(4)">Purchase Date</th>
+        <th class="sortable" onclick="sortTable(5)">Release Year</th>
+        <th class="sortable" onclick="sortTable(6)">Camera Type</th>
+        <th class="sortable" onclick="sortTable(7)">Battery</th>
+        <th class="sortable" onclick="sortTable(8)">Night Vision</th>
+        <th class="sortable" onclick="sortTable(9)">Zoom</th>
+        <th class="sortable" onclick="sortTable(10)">Mpx</th>
+        <th class="sortable" onclick="sortTable(11)">Suggested Price (PLN)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="product-list"></tbody>
+  </table>
+  <table id="archive-table" class="hidden">
+    <thead>
+      <tr>
+        <th class="sortable" onclick="sortTable(0)">Brand</th>
+        <th class="sortable" onclick="sortTable(1)">Model</th>
+        <th class="sortable" onclick="sortTable(2)">Quantity</th>
+        <th class="sortable" onclick="sortTable(3)">Purchase Price (PLN)</th>
+        <th class="sortable" onclick="sortTable(4)">Purchase Date</th>
+        <th class="sortable" onclick="sortTable(5)">Release Year</th>
+        <th class="sortable" onclick="sortTable(6)">Camera Type</th>
+        <th class="sortable" onclick="sortTable(7)">Battery</th>
+        <th class="sortable" onclick="sortTable(8)">Night Vision</th>
+        <th class="sortable" onclick="sortTable(9)">Zoom</th>
+        <th class="sortable" onclick="sortTable(10)">Mpx</th>
+        <th class="sortable" onclick="sortTable(11)">Suggested Price (PLN)</th>
+        <th class="sortable" onclick="sortTable(12)">Sale Price (PLN)</th>
+        <th class="sortable" onclick="sortTable(13)">Sale Date</th>
+        <th class="sortable" onclick="sortTable(14)">Additional Info</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="archive-list"></tbody>
+  </table>
+  <table id="trash-table" class="hidden">
+    <thead>
+      <tr>
+        <th class="sortable" onclick="sortTable(0)">Brand</th>
+        <th class="sortable" onclick="sortTable(1)">Model</th>
+        <th class="sortable" onclick="sortTable(2)">Quantity</th>
+        <th class="sortable" onclick="sortTable(3)">Purchase Price (PLN)</th>
+        <th class="sortable" onclick="sortTable(4)">Purchase Date</th>
+        <th class="sortable" onclick="sortTable(5)">Release Year</th>
+        <th class="sortable" onclick="sortTable(6)">Camera Type</th>
+        <th class="sortable" onclick="sortTable(7)">Battery</th>
+        <th class="sortable" onclick="sortTable(8)">Night Vision</th>
+        <th class="sortable" onclick="sortTable(9)">Zoom</th>
+        <th class="sortable" onclick="sortTable(10)">Mpx</th>
+        <th class="sortable" onclick="sortTable(11)">Suggested Price (PLN)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="trash-list"></tbody>
+  </table>
+</div>
+
+<script>
+  // Firebase configuration
+  var firebaseConfig = {
+	apiKey: "AIzaSyA6QtzqIVBFGuBo19dVmoqwXH5ohHubpeI",
+    authDomain: "baza-40253.firebaseapp.com",
+    projectId: "baza-40253",
+    storageBucket: "baza-40253.appspot.com",
+    messagingSenderId: "723026251888",
+    appId: "1:723026251888:web:cb6f0d323e7c231ba124b5"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+
+  const brandToBattery = {
+    "Canon": ["NB-2L", "BP511", "BP208/BP211", "BP808"],
+    "JVC": ["V408 (1st type)", "VF707 (2nd type)", "VF808 (3rd type)", "VG114 (4th type)"],
+    "Panasonic": ["CGR-D (1st type)", "CGA-DU (2nd type)", "VBK130 (3rd type)", "VBK180 (Slim type)"],
+    "Sony": ["NP-Fxxx (og)", "NP-FM (1st type)", "NP-FP (2nd type)", "NP-FV (3rd type)"]
+  };
+
+  document.getElementById('brand').addEventListener('change', function() {
+    const brand = this.value;
+    const batterySelect = document.getElementById('battery');
+    batterySelect.innerHTML = '';
+
+    if (brandToBattery[brand]) {
+      brandToBattery[brand].forEach(battery => {
+        const option = document.createElement('option');
+        option.value = battery;
+        option.textContent = battery;
+        batterySelect.appendChild(option);
+      });
+    } else {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'battery';
+      input.placeholder = 'Battery';
+      input.required = true;
+      batterySelect.replaceWith(input);
+    }
+  });
+
+  document.getElementById('product-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    addOrUpdateProduct();
+  });
+
+  document.getElementById('save-changes-button').addEventListener('click', function (e) {
+    e.preventDefault();
+    saveChanges();
+  });
+
+  // Variables to track the current edit
+  let currentEditId = null;
+  let currentEditList = null;
+  let sortDirections = [];
+
+  // Add or update product
+  function addOrUpdateProduct() {
+    const brand = document.getElementById('brand').value;
+    const model = document.getElementById('model').value;
+    const quantity = document.getElementById('quantity').value;
+    const purchasePrice = document.getElementById('purchase-price').value;
+    const purchaseDate = document.getElementById('purchase-date').value;
+    const releaseYear = document.getElementById('release-year').value;
+    const cameraType = Array.from(document.getElementById('camera-type').selectedOptions).map(option => option.value);
+    const battery = document.getElementById('battery').value;
+    const nightVision = document.getElementById('night-vision').value;
+    const zoom = document.getElementById('zoom').value;
+    const mpx = document.getElementById('mpx').value;
+    const suggestedPrice = document.getElementById('suggested-price').value;
+
+    const productData = {
+      brand,
+      model,
+      quantity: parseInt(quantity),
+      purchasePrice,
+      purchaseDate,
+      releaseYear: parseInt(releaseYear),
+      cameraType,
+      battery,
+      nightVision,
+      zoom,
+      mpx,
+      suggestedPrice: parseFloat(suggestedPrice)
+    };
+
+    if (currentEditId) {
+      db.collection(currentEditList).doc(currentEditId).update(productData)
+        .then(() => {
+          resetForm();
+        })
+        .catch(error => console.error("Error updating document: ", error));
+    } else {
+      db.collection('products').add(productData);
+      resetForm();
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('product-form').reset();
+    currentEditId = null;
+    currentEditList = null;
+    document.getElementById('submit-button').classList.remove('hidden');
+    document.getElementById('save-changes-button').classList.add('hidden');
+  }
+
+  function editProduct(id, data, list) {
+    currentEditId = id;
+    currentEditList = list;
+    document.getElementById('brand').value = data.brand;
+    document.getElementById('model').value = data.model;
+    document.getElementById('quantity').value = data.quantity;
+    document.getElementById('purchase-price').value = data.purchasePrice;
+    document.getElementById('purchase-date').value = data.purchaseDate;
+    document.getElementById('release-year').value = data.releaseYear;
+    Array.from(document.getElementById('camera-type').options).forEach(option => {
+      option.selected = data.cameraType.includes(option.value);
+    });
+
+    const batterySelect = document.getElementById('battery');
+    if (brandToBattery[data.brand]) {
+      batterySelect.innerHTML = '';
+      brandToBattery[data.brand].forEach(battery => {
+        const option = document.createElement('option');
+        option.value = battery;
+        option.textContent = battery;
+        batterySelect.appendChild(option);
+      });
+      batterySelect.value = data.battery;
+    } else {
+      batterySelect.outerHTML = `<input type="text" id="battery" value="${data.battery}" placeholder="Battery" required>`;
+    }
+
+    document.getElementById('night-vision').value = data.nightVision;
+    document.getElementById('zoom').value = data.zoom;
+    document.getElementById('mpx').value = data.mpx;
+    document.getElementById('suggested-price').value = data.suggestedPrice;
+    document.getElementById('submit-button').classList.add('hidden');
+    document.getElementById('save-changes-button').classList.remove('hidden');
+  }
+
+  function saveChanges() {
+    addOrUpdateProduct();
+  }
+
+  function sellProduct(id, data) {
+    const salePrice = prompt("Enter sale price (PLN):");
+    if (!salePrice) return;
+    const additionalInfo = prompt("Additional information (optional):");
+    const saleDate = prompt("Enter sale date (YYYY-MM-DD):");
+
+    db.collection('archive').add({
+      ...data,
+      salePrice: parseFloat(salePrice),
+      additionalInfo: additionalInfo,
+      saleDate: saleDate
+    });
+
+    db.collection('products').doc(id).delete();
+  }
+
+  function deleteProduct(id) {
+    db.collection('products').doc(id).get().then(doc => {
+      if (doc.exists) {
+        db.collection('trash').add(doc.data());
+        db.collection('products').doc(id).delete();
+      }
+    });
+  }
+
+  function deleteFromTrash(id) {
+    db.collection('trash').doc(id).delete();
+  }
+
+  function restoreProduct(id, data, fromCollection, toCollection) {
+    db.collection(toCollection).add(data)
+      .then(() => {
+        db.collection(fromCollection).doc(id).delete();
+      })
+      .catch(error => console.error("Error restoring document: ", error));
+  }
+
+  function renderList(querySnapshot, listId) {
+    const list = document.getElementById(listId);
+    list.innerHTML = '';
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      const row = document.createElement('tr');
+      if (listId === 'product-list') {
+        row.innerHTML = `
+          <td>${data.brand}</td>
+          <td>${data.model}</td>
+          <td>${data.quantity}</td>
+          <td>${data.purchasePrice} PLN</td>
+          <td>${data.purchaseDate}</td>
+          <td>${data.releaseYear}</td>
+          <td>${data.cameraType.join(', ')}</td>
+          <td>${data.battery}</td>
+          <td>${data.nightVision}</td>
+          <td>${data.zoom}</td>
+          <td>${data.mpx}</td>
+          <td>${data.suggestedPrice} PLN</td>
+          <td>
+            <button onclick="editProduct('${doc.id}', ${JSON.stringify(data).replace(/"/g, '&quot;')}, 'products')">Edit</button>
+            <button onclick="sellProduct('${doc.id}', ${JSON.stringify(data).replace(/"/g, '&quot;')})">Sold</button>
+            <button onclick="deleteProduct('${doc.id}')">Delete</button>
+          </td>
+        `;
+      } else if (listId === 'archive-list') {
+        row.innerHTML = `
+          <td>${data.brand}</td>
+          <td>${data.model}</td>
+          <td>${data.quantity}</td>
+          <td>${data.purchasePrice} PLN</td>
+          <td>${data.purchaseDate}</td>
+          <td>${data.releaseYear}</td>
+          <td>${data.cameraType.join(', ')}</td>
+          <td>${data.battery}</td>
+          <td>${data.nightVision}</td>
+          <td>${data.zoom}</td>
+          <td>${data.mpx}</td>
+          <td>${data.suggestedPrice} PLN</td>
+          <td>${data.salePrice} PLN</td>
+          <td>${new Date(data.saleDate).toLocaleDateString()}</td>
+          <td>${data.additionalInfo || ''}</td>
+          <td>
+            <button onclick="editProduct('${doc.id}', ${JSON.stringify(data).replace(/"/g, '&quot;')}, 'archive')">Edit</button>
+            <button onclick="restoreProduct('${doc.id}', ${JSON.stringify(data).replace(/"/g, '&quot;')}, 'archive', 'products')">Restore</button>
+          </td>
+        `;
+      } else {
+        row.innerHTML = `
+          <td>${data.brand}</td>
+          <td>${data.model}</td>
+          <td>${data.quantity}</td>
+          <td>${data.purchasePrice} PLN</td>
+          <td>${data.purchaseDate}</td>
+          <td>${data.releaseYear}</td>
+          <td>${data.cameraType.join(', ')}</td>
+          <td>${data.battery}</td>
+          <td>${data.nightVision}</td>
+          <td>${data.zoom}</td>
+          <td>${data.mpx}</td>
+          <td>${data.suggestedPrice} PLN</td>
+          <td>
+            <button onclick="restoreProduct('${doc.id}', ${JSON.stringify(data).replace(/"/g, '&quot;')}, 'trash', 'products')">Restore</button>
+            <button onclick="deleteFromTrash('${doc.id}')">Delete</button>
+          </td>
+        `;
+      }
+      list.appendChild(row);
+    });
+  }
+
+  db.collection('products').onSnapshot(querySnapshot => renderList(querySnapshot, 'product-list'));
+  db.collection('archive').onSnapshot(querySnapshot => renderList(querySnapshot, 'archive-list'));
+  db.collection('trash').onSnapshot(querySnapshot => renderList(querySnapshot, 'trash-list'));
+
+  function showList() {
+    document.getElementById('product-table').classList.remove('hidden');
+    document.getElementById('archive-table').classList.add('hidden');
+    document.getElementById('trash-table').classList.add('hidden');
+  }
+
+  function showArchive() {
+    document.getElementById('product-table').classList.add('hidden');
+    document.getElementById('archive-table').classList.remove('hidden');
+    document.getElementById('trash-table').classList.add('hidden');
+  }
+
+  function showTrash() {
+    document.getElementById('product-table').classList.add('hidden');
+    document.getElementById('archive-table').classList.add('hidden');
+    document.getElementById('trash-table').classList.remove('hidden');
+  }
+
+  function filterProducts(query) {
+    const lists = [document.getElementById('product-list'), document.getElementById('archive-list'), document.getElementById('trash-list')];
+    lists.forEach(list => {
+      Array.from(list.children).forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(query) ? '' : 'none';
+      });
+    });
+  }
+
+  document.getElementById('search-bar').addEventListener('input', function(e) {
+    const query = e.target.value.toLowerCase();
+    filterProducts(query);
+  });
+
+  function sortTable(n) {
+    const tableId = document.querySelector('table:not(.hidden)').id;
+    const table = document.getElementById(tableId);
+    const rows = Array.from(table.rows).slice(1);
+    const isNumber = !isNaN(parseFloat(rows[0].cells[n].textContent));
+    const isDate = !isNaN(Date.parse(rows[0].cells[n].textContent));
+    const direction = sortDirections[n] === 'asc' ? 'desc' : 'asc';
+    sortDirections[n] = direction;
+    rows.sort((a, b) => {
+      const aText = a.cells[n].textContent;
+      const bText = b.cells[n].textContent;
+      if (isDate) {
+        const aDate = new Date(aText);
+        const bDate = new Date(bText);
+        return direction === 'asc' ? aDate - bDate : bDate - aDate;
+      } else {
+        return direction === 'asc' ? 
+          (isNumber ? parseFloat(aText) - parseFloat(bText) : aText.localeCompare(bText)) : 
+          (isNumber ? parseFloat(bText) - parseFloat(aText) : bText.localeCompare(aText));
+      }
+    });
+    rows.forEach(row => table.tBodies[0].appendChild(row));
+  }
+
+  // Initialize sort directions array
+  const columnsCount = document.querySelectorAll('th.sortable').length;
+  sortDirections = Array(columnsCount).fill('asc');
+
+  showList();
+</script>
+
+</body>
+</html>
